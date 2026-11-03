@@ -1,0 +1,35 @@
+name: Import Brasil.io (Mensal)
+
+# Roda todo dia 1º às 03:00 UTC, ou manualmente via workflow_dispatch.
+# Pré-requisito: DATABASE_URL_PROD configurado em Settings → Secrets and variables → Actions.
+
+on:
+  schedule:
+    - cron: '0 3 1 * *'
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+      TEMP: /tmp
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Importar Brasil.io → disc_companies
+        run: node node_modules/tsx/dist/cli.mjs scripts/import-brasil-io.ts
+
+      - name: Contar empresas importadas
+        run: node node_modules/tsx/dist/cli.mjs scripts/count-companies.ts

@@ -1,0 +1,47 @@
+name: Deploy Site (Railway)
+
+# O site de marketing foi migrado do Vercel pro Railway (@limo/site serve
+# limoapp.com.br). O workflow antigo deployava pra Vercel (alvo abandonado) — por
+# isso as mudanças não chegavam no ar (site congelado desde a migração). Agora
+# deploya no Railway com o mecanismo que funciona: `railway up apps/site
+# --path-as-root` (lê apps/site/railway.json + Dockerfile relativo a apps/site,
+# desacoplado do railway.json da raiz, que é da API).
+# Requer o secret RAILWAY_TOKEN (token de projeto, ambiente production).
+
+# ⚠️ Builds via token do Railway falham no agendador ("scheduling build on Metal
+# builder", sem log) — problema de plataforma do Railway. Builds pela conta
+# (railway up local) funcionam. Por isso este workflow fica SÓ manual
+# (workflow_dispatch) e o deploy do site é feito via `railway up apps/site
+# --path-as-root --service "@limo/site"` numa conta autenticada. Reavaliar
+# (Vercel/Cloudflare Pages) se as mudanças no site ficarem frequentes.
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+
+      # O agendamento de build do Railway ("scheduling build on Metal builder")
+      # engasga de forma intermitente e falha sem log. A config está correta (o
+      # mesmo comando já deployou o site com sucesso), então tentamos de novo.
+      - name: Deploy to Railway (@limo/site)
+        run: |
+          for i in 1 2 3 4; do
+            echo "::group::Tentativa $i de deploy"
+            if railway up apps/site --path-as-root --service "@limo/site" --ci; then
+              echo "Deploy OK na tentativa $i"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "Tentativa $i falhou (provável flakiness do builder). Nova tentativa em 20s..."
+            sleep 20
+          done
+          echo "Deploy falhou após 4 tentativas."
+          exit 1
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

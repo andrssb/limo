@@ -1,0 +1,31 @@
+name: Deploy Web to Vercel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/types/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci --workspace=apps/web --workspace=packages/types
+
+      - run: npm run build --workspace=apps/web
+        env:
+          VITE_API_URL: https://limoapi-production.up.railway.app/v1
+
+      - run: npx vercel deploy apps/web/dist --yes --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: team_hKim5IRYMnfxNHX7oHghwhaP
+          VERCEL_PROJECT_ID: prj_f6qrh9B6a5bNTjzb4xUgysYZCqfT

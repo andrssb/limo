@@ -1,0 +1,13 @@
+services:
+  sip-bridge:
+    build: .
+    container_name: limo-sip-bridge
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - ${SIP_BRIDGE_ENV_FILE:-.env}
+    volumes:
+      - asterisk_logs:/var/log/asterisk
+
+volumes:
+  asterisk_logs:

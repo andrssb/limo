@@ -1,0 +1,11 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  '@embedded-postgres/windows-x64': set this to true or false
+  '@whiskeysockets/baileys': false
+  es5-ext: true
+  esbuild: true
+  msgpackr-extract: true
+  protobufjs: false
+  sharp: false

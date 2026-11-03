@@ -1,0 +1,8 @@
+# Limo — https://limoapp.com.br
+# Permite indexação por buscadores. Bots de IA são tratados pelo
+# robots.txt gerenciado do Cloudflare (anexado abaixo deste bloco).
+
+User-agent: *
+Allow: /
+
+Sitemap: https://limoapp.com.br/sitemap.xml

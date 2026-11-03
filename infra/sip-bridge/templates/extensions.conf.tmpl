@@ -1,0 +1,42 @@
+[general]
+static=yes
+writeprotect=yes
+clearglobalvars=no
+
+[globals]
+VONO_CALLER_ID=${VONO_CALLER_ID}
+EL_AGENT_NUMBER=${EL_AGENT_NUMBER}
+
+; ElevenLabs usa E.164 (+55...). A Vono documenta a discagem nacional como
+; 0 + DDD + numero, por isso a normalizacao acontece antes do Dial.
+[from-elevenlabs]
+; Evita que a extensao especial "h" (executada ao desligar) caia no coringa
+; abaixo e gere uma segunda tentativa de chamada para a Vono.
+exten => h,1,Hangup()
+
+exten => _.,1,NoOp(Chamada ElevenLabs para ${EXTEN})
+ same => n,Set(CLEAN_NUMBER=${FILTER(0-9+,${EXTEN})})
+ same => n,Set(OUT_NUMBER=)
+ same => n,ExecIf($["${CLEAN_NUMBER:0:3}" = "+55"]?Set(OUT_NUMBER=0${CLEAN_NUMBER:3}))
+ same => n,ExecIf($["${OUT_NUMBER}" = "" & "${CLEAN_NUMBER:0:2}" = "55"]?Set(OUT_NUMBER=0${CLEAN_NUMBER:2}))
+ same => n,ExecIf($["${OUT_NUMBER}" = "" & "${CLEAN_NUMBER:0:1}" = "0"]?Set(OUT_NUMBER=${CLEAN_NUMBER}))
+ same => n,ExecIf($["${OUT_NUMBER}" = ""]?Set(OUT_NUMBER=0${CLEAN_NUMBER}))
+ same => n,Set(CALLERID(num)=${VONO_CALLER_ID})
+; Sem ganho, a voz do Luis chega baixa e, somada a banda de telefone (8 kHz),
+; soa como alguem longe do aparelho. RX = audio que vem da ElevenLabs.
+ same => n,Set(VOLUME(RX)=3)
+ same => n,Dial(PJSIP/${OUT_NUMBER}@vono,60)
+ same => n,Hangup()
+
+; O numero Vono tambem pode receber chamadas e encaminha-las ao Luis.
+[from-vono]
+exten => _.,1,NoOp(Chamada Vono recebida para ${EXTEN})
+ same => n,Dial(PJSIP/${EL_AGENT_NUMBER}@elevenlabs-cloud,60)
+ same => n,Hangup()
+
+exten => s,1,NoOp(Chamada Vono recebida sem DID)
+ same => n,Dial(PJSIP/${EL_AGENT_NUMBER}@elevenlabs-cloud,60)
+ same => n,Hangup()
+
+[from-elevenlabs-cloud]
+exten => _.,1,Hangup()
